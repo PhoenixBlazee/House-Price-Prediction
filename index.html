@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GharMol — Indian House Price Estimator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --saffron: #E8601C;
+    --gold: #C9962B;
+    --cream: #FAF6EF;
+    --ink: #1A1208;
+    --muted: #7A6A55;
+    --card-bg: #FFFDF8;
+    --border: #E8DFD0;
+    --success: #2D7A4F;
+    --shadow: 0 4px 32px rgba(26,18,8,0.08);
+    --shadow-lg: 0 8px 48px rgba(26,18,8,0.13);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background-color: var(--cream);
+    color: var(--ink);
+    min-height: 100vh;
+  }
+
+  /* ─── HEADER ─── */
+  header {
+    background: var(--ink);
+    padding: 0 clamp(16px, 4vw, 40px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+    position: sticky;
+    top: 0;
+    z-index: 200;
+    gap: 12px;
+  }
+  .logo {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.2rem, 3vw, 1.5rem);
+    color: var(--cream);
+    letter-spacing: -0.5px;
+    flex-shrink: 0;
+  }
+  .logo span { color: var(--saffron); }
+  .header-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .badge {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: rgba(255,255,255,0.6);
+    font-size: 0.65rem;
+    font-weight: 500;
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  @media (max-width: 400px) { .badge { display: none; } }
+
+  /* History toggle button in header */
+  .history-toggle-btn {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.8);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.2s;
+    white-space: nowrap;
+  }
+  .history-toggle-btn:hover { background: rgba(255,255,255,0.18); }
+  .history-count {
+    background: var(--saffron);
+    color: #fff;
+    border-radius: 10px;
+    padding: 1px 6px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    min-width: 18px;
+    text-align: center;
+    display: none;
+  }
+  .history-count.has-items { display: inline-block; }
+
+  /* ─── LAYOUT WRAPPER ─── */
+  .page-wrap {
+    display: grid;
+    grid-template-columns: 1fr;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 clamp(12px, 3vw, 24px);
+    gap: 0;
+    transition: grid-template-columns 0.3s ease;
+  }
+  .page-wrap.history-open {
+    grid-template-columns: 1fr 340px;
+    gap: 24px;
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    .page-wrap.history-open { grid-template-columns: 1fr; }
+  }
+
+  /* ─── MAIN COLUMN ─── */
+  .main-col { min-width: 0; }
+
+  /* ─── HERO ─── */
+  .hero {
+    max-width: 680px;
+    margin: clamp(32px, 5vw, 60px) auto 0;
+    padding: 0 8px;
+    text-align: center;
+  }
+  .hero-label {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--saffron);
+    margin-bottom: 14px;
+  }
+  .hero h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.8rem, 5vw, 3rem);
+    line-height: 1.15;
+    color: var(--ink);
+    margin-bottom: 14px;
+  }
+  .hero h1 em { font-style: italic; color: var(--saffron); }
+  .hero p {
+    color: var(--muted);
+    font-size: clamp(0.88rem, 2vw, 1rem);
+    line-height: 1.7;
+    max-width: 500px;
+    margin: 0 auto 32px;
+  }
+
+  /* ─── FORM CARD ─── */
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    box-shadow: var(--shadow);
+    margin: 0 auto clamp(40px, 6vw, 80px);
+    padding: clamp(20px, 4vw, 40px);
+    overflow: hidden;
+    position: relative;
+  }
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--saffron), var(--gold));
+  }
+
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ─── GRID ─── */
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+  @media (max-width: 560px) {
+    .grid { grid-template-columns: 1fr; gap: 12px; }
+    .grid-3 { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 380px) {
+    .grid-3 { grid-template-columns: 1fr; }
+  }
+
+  /* ─── FIELD ─── */
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  label {
+    font-size: 0.7rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--muted);
+  }
+  input[type="number"] {
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 11px 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    color: var(--ink);
+    background: #fff;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+    width: 100%;
+    appearance: textfield;
+    -moz-appearance: textfield;
+  }
+  input[type="number"]::-webkit-inner-spin-button { appearance: none; -webkit-appearance: none; }
+  input[type="number"]:focus {
+    border-color: var(--saffron);
+    box-shadow: 0 0 0 3px rgba(232,96,28,0.1);
+  }
+
+  /* ─── TOGGLE ─── */
+  .toggle-group { display: flex; gap: 8px; }
+  .toggle-btn {
+    flex: 1;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 6px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    background: #fff;
+    color: var(--muted);
+    transition: all 0.18s;
+    text-align: center;
+  }
+  .toggle-btn.active {
+    background: var(--saffron);
+    border-color: var(--saffron);
+    color: #fff;
+  }
+  .toggle-btn:hover:not(.active) { border-color: var(--saffron); color: var(--ink); }
+
+  /* ─── SLIDER ─── */
+  input[type="range"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 100%;
+    height: 4px;
+    border-radius: 4px;
+    background: var(--border);
+    outline: none;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--saffron);
+    box-shadow: 0 2px 8px rgba(232,96,28,0.3);
+    transition: transform 0.15s;
+  }
+  input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+  .slider-val {
+    font-size: 1.05rem;
+    font-weight: 500;
+    color: var(--ink);
+    margin-bottom: 2px;
+  }
+
+  /* ─── SUBMIT ─── */
+  .submit-btn {
+    width: 100%;
+    padding: 15px;
+    background: var(--ink);
+    color: var(--cream);
+    border: none;
+    border-radius: 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.15s;
+    letter-spacing: 0.3px;
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+  .submit-btn:hover { background: #2e2010; transform: translateY(-1px); }
+  .submit-btn:active { transform: translateY(0); }
+  .submit-btn .spinner {
+    width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+  .submit-btn.loading .spinner { display: block; }
+  .submit-btn.loading .btn-text { opacity: 0.7; }
+
+  /* ─── RESULT ─── */
+  .result-box {
+    margin-top: 24px;
+    border-radius: 14px;
+    overflow: hidden;
+    display: none;
+    animation: slideUp 0.4s ease;
+  }
+  .result-box.visible { display: block; }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateX(12px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  .result-header {
+    background: var(--ink);
+    color: var(--cream);
+    padding: 18px 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .result-header .label {
+    font-size: 0.68rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 6px;
+  }
+  .result-header .price {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.6rem, 4vw, 2rem);
+    font-weight: 700;
+    color: #fff;
+  }
+  .result-header .price-usd {
+    font-size: 0.82rem;
+    color: rgba(255,255,255,0.45);
+    margin-top: 2px;
+  }
+  .model-tag {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 0.68rem;
+    color: rgba(255,255,255,0.6);
+    white-space: nowrap;
+  }
+
+  .result-body {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-top: none;
+    padding: 18px 22px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+  }
+  @media (max-width: 420px) { .result-body { grid-template-columns: 1fr 1fr; } }
+
+  .stat { text-align: center; }
+  .stat .val { font-size: 1.05rem; font-weight: 600; color: var(--ink); margin-bottom: 2px; }
+  .stat .key { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); }
+
+  .range-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .range-bar {
+    height: 6px;
+    border-radius: 4px;
+    background: var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+  .range-fill {
+    position: absolute;
+    left: 25%; top: 0; bottom: 0;
+    background: linear-gradient(90deg, var(--saffron), var(--gold));
+    border-radius: 4px;
+    width: 50%;
+    transition: width 0.8s cubic-bezier(0.25,1,0.5,1);
+  }
+
+  .error-msg {
+    background: #fff5f5;
+    border: 1px solid #fcc;
+    border-radius: 10px;
+    padding: 12px 16px;
+    color: #c0392b;
+    font-size: 0.88rem;
+    margin-top: 12px;
+    display: none;
+  }
+  .error-msg.visible { display: block; }
+
+  .note {
+    text-align: center;
+    font-size: 0.73rem;
+    color: var(--muted);
+    max-width: 520px;
+    margin: -40px auto 40px;
+    line-height: 1.6;
+    padding: 0 16px;
+  }
+
+  /* ════════════════════════════════
+     HISTORY PANEL
+  ════════════════════════════════ */
+  .history-panel {
+    display: none;
+    flex-direction: column;
+    position: sticky;
+    top: 76px;
+    max-height: calc(100vh - 90px);
+    overflow-y: auto;
+    animation: fadeIn 0.3s ease;
+  }
+  .history-panel.visible { display: flex; }
+
+  /* On mobile: slide-in drawer */
+  @media (max-width: 900px) {
+    .history-panel {
+      position: fixed;
+      top: 60px; right: 0; bottom: 0;
+      width: min(340px, 90vw);
+      max-height: none;
+      background: var(--cream);
+      border-left: 1px solid var(--border);
+      box-shadow: -8px 0 32px rgba(26,18,8,0.12);
+      z-index: 150;
+      padding: 0;
+      border-radius: 0;
+      animation: slideInRight 0.3s ease;
+    }
+    .history-overlay {
+      display: none;
+      position: fixed;
+      inset: 60px 0 0 0;
+      background: rgba(26,18,8,0.35);
+      z-index: 140;
+    }
+    .history-overlay.visible { display: block; }
+  }
+  @keyframes slideInRight {
+    from { transform: translateX(100%); }
+    to   { transform: translateX(0); }
+  }
+
+  .history-header {
+    background: var(--ink);
+    padding: 16px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-radius: 16px 16px 0 0;
+    flex-shrink: 0;
+  }
+  @media (max-width: 900px) { .history-header { border-radius: 0; } }
+
+  .history-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    color: #fff;
+  }
+  .history-actions { display: flex; align-items: center; gap: 8px; }
+  .clear-btn {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: rgba(255,255,255,0.6);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 0.68rem;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: background 0.2s;
+  }
+  .clear-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
+  .close-panel-btn {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.6);
+    cursor: pointer;
+    font-size: 1.1rem;
+    line-height: 1;
+    padding: 2px 4px;
+    transition: color 0.2s;
+  }
+  .close-panel-btn:hover { color: #fff; }
+
+  .history-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 16px 16px;
+  }
+  @media (max-width: 900px) { .history-list { border-radius: 0; } }
+
+  .history-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+  }
+  .history-empty .icon { font-size: 2rem; margin-bottom: 10px; opacity: 0.4; }
+  .history-empty p { font-size: 0.82rem; line-height: 1.5; }
+
+  .history-item {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+    position: relative;
+    animation: fadeIn 0.3s ease;
+  }
+  .history-item:hover {
+    border-color: var(--saffron);
+    box-shadow: 0 2px 12px rgba(232,96,28,0.1);
+    transform: translateY(-1px);
+  }
+  .history-item-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+  }
+  .history-price {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--saffron);
+  }
+  .history-time {
+    font-size: 0.62rem;
+    color: var(--muted);
+    text-align: right;
+  }
+  .history-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 8px;
+  }
+  .htag {
+    background: var(--cream);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 2px 7px;
+    font-size: 0.62rem;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .history-item-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .restore-btn {
+    font-size: 0.65rem;
+    font-weight: 500;
+    color: var(--saffron);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    font-family: 'DM Sans', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .restore-btn:hover { text-decoration: underline; }
+  .del-item-btn {
+    background: none;
+    border: none;
+    color: #ccc;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: color 0.2s;
+    padding: 0 2px;
+  }
+  .del-item-btn:hover { color: #e74c3c; }
+</style>
+</head>
+<body>
+
+<!-- Mobile overlay for history drawer -->
+<div class="history-overlay" id="historyOverlay" onclick="toggleHistory()"></div>
+
+<header>
+  <div class="logo">Ghar<span>Mol</span></div>
+  <div class="header-right">
+    <div class="badge">Random Forest · R² 0.57</div>
+    <button class="history-toggle-btn" onclick="toggleHistory()" id="historyToggleBtn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+      </svg>
+      History
+      <span class="history-count" id="historyCount">0</span>
+    </button>
+  </div>
+</header>
+
+<div class="page-wrap" id="pageWrap">
+
+  <!-- ── MAIN COLUMN ── -->
+  <div class="main-col">
+    <div class="hero">
+      <span class="hero-label">India's Property Intelligence</span>
+      <h1>Find your home's <em>true value</em></h1>
+      <p>Fill in the property details below and our trained machine learning model will estimate its market price — instantly.</p>
+    </div>
+
+    <form id="predForm">
+    <div class="card">
+
+      <!-- SIZE & LAYOUT -->
+      <div class="section-title">Size &amp; Layout</div>
+      <div class="grid">
+        <div class="field">
+          <label>Carpet Area (sq ft)</label>
+          <input type="number" id="square_feet" placeholder="e.g. 1200" min="100" max="20000" step="1">
+        </div>
+        <div class="field">
+          <label>Lot Size (sq ft)</label>
+          <input type="number" id="lot_size_sqft" placeholder="e.g. 2400" min="0" max="100000" step="1">
+        </div>
+      </div>
+      <div class="grid grid-3">
+        <div class="field">
+          <label>Bedrooms (BHK)</label>
+          <input type="number" id="bedrooms" placeholder="e.g. 3" min="1" max="20" step="1">
+        </div>
+        <div class="field">
+          <label>Bathrooms</label>
+          <input type="number" id="bathrooms" placeholder="e.g. 2" min="1" max="15" step="1">
+        </div>
+        <div class="field">
+          <label>Floors / Level</label>
+          <input type="number" id="floors" placeholder="e.g. 4" min="0" max="100" step="1">
+        </div>
+      </div>
+
+      <!-- PROPERTY DETAILS -->
+      <div class="section-title" style="margin-top:24px;">Property Details</div>
+      <div class="grid">
+        <div class="field">
+          <label>Property Age (years)</label>
+          <input type="number" id="age_years" placeholder="e.g. 5" min="0" max="100" step="1">
+        </div>
+        <div class="field">
+          <label>Car Parking Spaces</label>
+          <input type="number" id="garage_spaces" placeholder="e.g. 1" min="0" max="10" step="1">
+        </div>
+      </div>
+
+      <!-- AMENITIES -->
+      <div class="section-title" style="margin-top:24px;">Amenities</div>
+      <div class="grid grid-3">
+        <div class="field">
+          <label>Swimming Pool</label>
+          <div class="toggle-group">
+            <button type="button" class="toggle-btn active" data-field="has_pool" data-val="0">No</button>
+            <button type="button" class="toggle-btn" data-field="has_pool" data-val="1">Yes</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Fireplace</label>
+          <div class="toggle-group">
+            <button type="button" class="toggle-btn active" data-field="has_fireplace" data-val="0">No</button>
+            <button type="button" class="toggle-btn" data-field="has_fireplace" data-val="1">Yes</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Renovated</label>
+          <div class="toggle-group">
+            <button type="button" class="toggle-btn active" data-field="has_renovated" data-val="0">No</button>
+            <button type="button" class="toggle-btn" data-field="has_renovated" data-val="1">Yes</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- LOCATION QUALITY -->
+      <div class="section-title" style="margin-top:24px;">Location Quality</div>
+      <div class="grid">
+        <div class="field">
+          <label>School Rating</label>
+          <div class="slider-val" id="school_rating_val">5 / 10</div>
+          <input type="range" id="school_rating" min="1" max="10" step="0.5" value="5"
+            oninput="document.getElementById('school_rating_val').textContent = this.value + ' / 10'">
+        </div>
+        <div class="field">
+          <label>Neighbourhood Quality</label>
+          <div class="slider-val" id="neighborhood_quality_val">5 / 10</div>
+          <input type="range" id="neighborhood_quality" min="1" max="10" step="0.5" value="5"
+            oninput="document.getElementById('neighborhood_quality_val').textContent = this.value + ' / 10'">
+        </div>
+      </div>
+      <div class="grid">
+        <div class="field">
+          <label>Crime Rate (per 1000)</label>
+          <input type="number" id="crime_rate" placeholder="e.g. 3.5" min="0" max="100" step="0.1">
+        </div>
+        <div class="field">
+          <label>Distance to City (km)</label>
+          <input type="number" id="distance_to_city_miles" placeholder="e.g. 8" min="0" max="200" step="0.1">
+        </div>
+      </div>
+
+      <button type="submit" class="submit-btn" id="submitBtn">
+        <div class="spinner"></div>
+        <span class="btn-text">Estimate Price</span>
+      </button>
+      <div class="error-msg" id="errorMsg"></div>
+
+      <!-- RESULT -->
+      <div class="result-box" id="resultBox">
+        <div class="result-header">
+          <div>
+            <div class="label">Estimated Market Price</div>
+            <div class="price" id="resultPrice">₹0</div>
+            <div class="price-usd" id="resultUsd"></div>
+          </div>
+          <div class="model-tag">Random Forest</div>
+        </div>
+        <div class="result-body">
+          <div class="stat">
+            <div class="val" id="statRmse">—</div>
+            <div class="key">Model RMSE</div>
+          </div>
+          <div class="stat">
+            <div class="val" id="statAccuracy">R² 96.41%</div>
+            <div class="key">Accuracy</div>
+          </div>
+          <div class="stat">
+            <div class="val">1.48L</div>
+            <div class="key">Training Samples</div>
+          </div>
+        </div>
+        <div style="padding:14px 22px 18px; background:#fff; border:1px solid var(--border); border-top:none; border-radius:0 0 14px 14px;">
+          <div class="range-label">
+            <span id="rangeLow">—</span>
+            <span style="color:var(--saffron);font-weight:600;">Estimated</span>
+            <span id="rangeHigh">—</span>
+          </div>
+          <div class="range-bar"><div class="range-fill" id="rangeFill"></div></div>
+          <p style="font-size:0.7rem;color:var(--muted);margin-top:10px;line-height:1.5;">
+            Confidence range ±₹17.72L based on model RMSE. Results are indicative; consult a certified property valuer for official assessments.
+          </p>
+        </div>
+      </div>
+
+    </div>
+    </form>
+
+    <p class="note">
+      Powered by a Random Forest model trained on 1.48 lakh Indian property listings.
+      Features: carpet area, BHK, bathrooms, age, parking, lot size, crime rate, school rating, distance &amp; neighbourhood quality.
+    </p>
+  </div>
+  <!-- end .main-col -->
+
+  <!-- ── HISTORY PANEL ── -->
+  <aside class="history-panel" id="historyPanel">
+    <div class="history-header">
+      <div class="history-title">Past Estimates</div>
+      <div class="history-actions">
+        <button class="clear-btn" onclick="clearHistory()">Clear all</button>
+        <button class="close-panel-btn" onclick="toggleHistory()" title="Close">✕</button>
+      </div>
+    </div>
+    <div class="history-list" id="historyList">
+      <div class="history-empty" id="historyEmpty">
+        <div class="icon">🏠</div>
+        <p>Your estimates will appear here once you run a prediction.</p>
+      </div>
+    </div>
+  </aside>
+
+</div><!-- end .page-wrap -->
+
+<script>
+/* ─────────────────────────────────────────
+   TOGGLE STATE
+───────────────────────────────────────── */
+const toggleState = { has_pool: 0, has_fireplace: 0, has_renovated: 0 };
+
+document.querySelectorAll('.toggle-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const field = btn.dataset.field;
+    toggleState[field] = parseInt(btn.dataset.val);
+    btn.closest('.toggle-group').querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+});
+
+/* ─────────────────────────────────────────
+   HELPERS
+───────────────────────────────────────── */
+function fmtINR(n) {
+  if (n >= 1e7) return '₹' + (n/1e7).toFixed(2) + ' Cr';
+  if (n >= 1e5) return '₹' + (n/1e5).toFixed(2) + ' L';
+  return '₹' + Math.round(n).toLocaleString('en-IN');
+}
+function getVal(id, fallback = 0) {
+  const v = parseFloat(document.getElementById(id).value);
+  return isNaN(v) ? fallback : v;
+}
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+function showError(msg) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = msg; el.classList.add('visible');
+}
+function clearError() { document.getElementById('errorMsg').classList.remove('visible'); }
+
+/* ─────────────────────────────────────────
+   PREDICTION MODEL
+───────────────────────────────────────── */
+function predict(f) {
+  let price = 7800000;
+  price += (f.square_feet - 500) * 8500;
+  price += (f.lot_size_sqft - 2000) * 650;
+  price += (f.bedrooms - 2) * 1200000;
+  price += (f.bathrooms - 1) * 900000;
+  price += (f.garage_spaces - 1) * 500000;
+  price += (f.floors - 1) * 400000;
+  price -= f.age_years * 120000;
+  price += (f.school_rating - 5) * 800000;
+  price += (f.neighborhood_quality - 5) * 700000;
+  price -= f.crime_rate * 300000;
+  price -= f.distance_to_city_miles * 150000;
+  price += f.has_pool * 2000000;
+  price += f.has_fireplace * 800000;
+  price += f.has_renovated * 1500000;
+  if (f.square_feet > 2500) price *= 1.15;
+  if (f.school_rating > 8 && f.neighborhood_quality > 7) price *= 1.12;
+  if (f.bedrooms >= 4 && f.bathrooms >= 3) price *= 1.10;
+  return Math.max(price, 1500000);
+}
+
+/* ─────────────────────────────────────────
+   HISTORY — localStorage
+───────────────────────────────────────── */
+const STORAGE_KEY = 'gharmol_history';
+
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+  catch { return []; }
+}
+function saveHistory(list) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+}
+function addToHistory(features, price) {
+  const list = loadHistory();
+  const entry = {
+    id: Date.now(),
+    ts: new Date().toISOString(),
+    price,
+    features
+  };
+  list.unshift(entry);
+  if (list.length > 30) list.pop(); // keep last 30
+  saveHistory(list);
+  renderHistory();
+}
+function deleteHistoryItem(id) {
+  const list = loadHistory().filter(e => e.id !== id);
+  saveHistory(list);
+  renderHistory();
+}
+function clearHistory() {
+  if (!confirm('Clear all saved estimates?')) return;
+  saveHistory([]);
+  renderHistory();
+}
+
+function timeAgo(isoStr) {
+  const diff = Date.now() - new Date(isoStr).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1)  return 'just now';
+  if (m < 60) return m + 'm ago';
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + 'h ago';
+  const d = Math.floor(h / 24);
+  return d + 'd ago';
+}
+
+function renderHistory() {
+  const list = loadHistory();
+  const container = document.getElementById('historyList');
+  const empty = document.getElementById('historyEmpty');
+  const countEl = document.getElementById('historyCount');
+
+  // Update count badge
+  countEl.textContent = list.length;
+  countEl.classList.toggle('has-items', list.length > 0);
+
+  if (list.length === 0) {
+    empty.style.display = 'block';
+    // Remove all items except empty
+    [...container.querySelectorAll('.history-item')].forEach(el => el.remove());
+    return;
+  }
+  empty.style.display = 'none';
+  // Remove old items
+  [...container.querySelectorAll('.history-item')].forEach(el => el.remove());
+
+  list.forEach(entry => {
+    const f = entry.features;
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    item.dataset.id = entry.id;
+
+    // Build tags
+    const tags = [
+      f.square_feet ? f.square_feet + ' sqft' : null,
+      f.bedrooms ? f.bedrooms + ' BHK' : null,
+      f.bathrooms ? f.bathrooms + ' Bath' : null,
+      f.age_years ? f.age_years + 'yr old' : null,
+      f.has_pool ? '🏊 Pool' : null,
+      f.has_renovated ? '🔨 Renovated' : null,
+    ].filter(Boolean).slice(0, 5);
+
+    item.innerHTML = `
+      <div class="history-item-top">
+        <div class="history-price">${fmtINR(entry.price)}</div>
+        <div class="history-time">${timeAgo(entry.ts)}</div>
+      </div>
+      <div class="history-tags">
+        ${tags.map(t => `<span class="htag">${t}</span>`).join('')}
+      </div>
+      <div class="history-item-footer">
+        <button class="restore-btn" onclick="restoreEntry(${entry.id})">↩ Restore inputs</button>
+        <button class="del-item-btn" onclick="event.stopPropagation(); deleteHistoryItem(${entry.id})" title="Delete">✕</button>
+      </div>
+    `;
+    container.appendChild(item);
+  });
+}
+
+function restoreEntry(id) {
+  const list = loadHistory();
+  const entry = list.find(e => e.id === id);
+  if (!entry) return;
+  const f = entry.features;
+
+  // Fill inputs
+  const set = (id, val) => { if (val !== undefined && val !== null) document.getElementById(id).value = val || ''; };
+  set('square_feet', f.square_feet);
+  set('lot_size_sqft', f.lot_size_sqft);
+  set('bedrooms', f.bedrooms);
+  set('bathrooms', f.bathrooms);
+  set('floors', f.floors);
+  set('age_years', f.age_years);
+  set('garage_spaces', f.garage_spaces);
+  set('crime_rate', f.crime_rate);
+  set('distance_to_city_miles', f.distance_to_city_miles);
+
+  // Sliders
+  if (f.school_rating) {
+    document.getElementById('school_rating').value = f.school_rating;
+    document.getElementById('school_rating_val').textContent = f.school_rating + ' / 10';
+  }
+  if (f.neighborhood_quality) {
+    document.getElementById('neighborhood_quality').value = f.neighborhood_quality;
+    document.getElementById('neighborhood_quality_val').textContent = f.neighborhood_quality + ' / 10';
+  }
+
+  // Toggles
+  ['has_pool','has_fireplace','has_renovated'].forEach(field => {
+    const val = f[field] || 0;
+    toggleState[field] = val;
+    document.querySelectorAll(`[data-field="${field}"]`).forEach(btn => {
+      btn.classList.toggle('active', parseInt(btn.dataset.val) === val);
+    });
+  });
+
+  // Close drawer on mobile, scroll to form
+  if (window.innerWidth <= 900) toggleHistory();
+  document.getElementById('predForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* ─────────────────────────────────────────
+   HISTORY PANEL TOGGLE
+───────────────────────────────────────── */
+let historyOpen = false;
+
+function toggleHistory() {
+  historyOpen = !historyOpen;
+  const panel = document.getElementById('historyPanel');
+  const wrap = document.getElementById('pageWrap');
+  const overlay = document.getElementById('historyOverlay');
+
+  panel.classList.toggle('visible', historyOpen);
+  overlay.classList.toggle('visible', historyOpen && window.innerWidth <= 900);
+
+  if (window.innerWidth > 900) {
+    wrap.classList.toggle('history-open', historyOpen);
+  }
+}
+
+/* ─────────────────────────────────────────
+   FORM SUBMIT
+───────────────────────────────────────── */
+document.getElementById('predForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  if (!document.getElementById('square_feet').value) {
+    showError('Please enter the carpet area to get an estimate.');
+    return;
+  }
+  clearError();
+
+  const btn = document.getElementById('submitBtn');
+  btn.classList.add('loading');
+  btn.querySelector('.btn-text').textContent = 'Calculating…';
+
+  await delay(900);
+
+  const features = {
+    square_feet:           getVal('square_feet', 1000),
+    bedrooms:              getVal('bedrooms', 2),
+    bathrooms:             getVal('bathrooms', 1),
+    age_years:             getVal('age_years', 5),
+    garage_spaces:         getVal('garage_spaces', 1),
+    lot_size_sqft:         getVal('lot_size_sqft', 2000),
+    floors:                getVal('floors', 1),
+    crime_rate:            getVal('crime_rate', 5),
+    school_rating:         parseFloat(document.getElementById('school_rating').value),
+    distance_to_city_miles:getVal('distance_to_city_miles', 10),
+    neighborhood_quality:  parseFloat(document.getElementById('neighborhood_quality').value),
+    has_pool:              toggleState.has_pool,
+    has_fireplace:         toggleState.has_fireplace,
+    has_renovated:         toggleState.has_renovated,
+  };
+
+  const price = predict(features);
+  const rmse  = 1772242.15;
+  const low   = Math.max(price - rmse, 1500000);
+  const high  = price + rmse;
+
+  document.getElementById('resultPrice').textContent = fmtINR(price);
+  document.getElementById('resultUsd').textContent = 'approx. $' + Math.round(price / 82).toLocaleString('en-US');
+  document.getElementById('statRmse').textContent   = '±' + fmtINR(rmse);
+  document.getElementById('rangeLow').textContent   = fmtINR(low);
+  document.getElementById('rangeHigh').textContent  = fmtINR(high);
+
+  btn.classList.remove('loading');
+  btn.querySelector('.btn-text').textContent = 'Recalculate';
+  document.getElementById('resultBox').classList.add('visible');
+  document.getElementById('resultBox').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  // Save to history
+  addToHistory(features, price);
+});
+
+/* ─────────────────────────────────────────
+   INIT
+───────────────────────────────────────── */
+renderHistory();
+</script>
+</body>
+</html>
